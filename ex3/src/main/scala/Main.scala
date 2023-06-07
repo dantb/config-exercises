@@ -34,7 +34,6 @@ object Failure:
     case Failure.InvalidKey(key, ps) => s"Invalid key $key at path: ${ps.mkString(", ")}"
 
 type Result[A] = ValidatedNel[Failure, A]
-given [A]: Show[Result[A]] = r => r.fold(_.map(_.show).mkString_("\n"), _.toString)
 
 trait Decoder[A]:
   def decode(config: Config): Result[A]
