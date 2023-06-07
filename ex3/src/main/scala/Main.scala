@@ -7,15 +7,15 @@ import cats.derived.*
 
 case class SystemConfig(server: ServerConfig, client: ClientConfig) derives Show
 object SystemConfig:
-  given Decoder[SystemConfig] = Decoder.forProduct2("server", "client")(SystemConfig(_, _))
+  given Decoder[SystemConfig] = Decoder.product2("server", "client")(SystemConfig(_, _))
 
 case class ServerConfig(version: String, host: String, port: Int)
 object ServerConfig:
-  given Decoder[ServerConfig] = Decoder.forProduct3("version", "host", "port")(ServerConfig(_, _, _))
+  given Decoder[ServerConfig] = Decoder.product3("version", "host", "port")(ServerConfig(_, _, _))
 
 case class ClientConfig(version: String, browser: String)
 object ClientConfig:
-  given Decoder[ClientConfig] = Decoder.forProduct2("version", "browser")(ClientConfig(_, _))
+  given Decoder[ClientConfig] = Decoder.product2("version", "browser")(ClientConfig(_, _))
 
 enum Failure(val path: List[String]):
   case InvalidNum(ps: List[String])              extends Failure(ps)
@@ -42,10 +42,10 @@ trait Decoder[A]:
 object Decoder:
   def apply[A](using dec: Decoder[A]): Decoder[A] = dec
 
-  def forProduct2[A: Decoder, B: Decoder, C](keyA: String, keyB: String)(f: (a: A, b: B) => C): Decoder[C] = conf =>
+  def product2[A: Decoder, B: Decoder, C](keyA: String, keyB: String)(f: (a: A, b: B) => C): Decoder[C] = conf =>
     (conf.get[A](keyA), conf.get[B](keyB)).mapN(f)
 
-  def forProduct3[A: Decoder, B: Decoder, C: Decoder, D](
+  def product3[A: Decoder, B: Decoder, C: Decoder, D](
     keyA: String,
     keyB: String,
     keyC: String
