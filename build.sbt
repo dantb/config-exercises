@@ -57,4 +57,5 @@ lazy val commonDependencies = Seq(
   "com.softwaremill.sttp.client4" %% "core"                % sttpClientVersion,
   "com.softwaremill.sttp.client4" %% "cats"                % sttpClientVersion,
   "com.softwaremill.sttp.openai"  %% "core"                % sttpOpenaiVersion,
+  "org.typelevel" %% "kittens" % "3.0.0"
 )
