@@ -51,8 +51,8 @@ object Decoder:
   )(f: (a: A, b: B, c: C) => D): Decoder[D] = conf => (conf.get[A](keyA), conf.get[B](keyB), conf.get[C](keyC)).mapN(f)
 
   given Decoder[Int] = _ match
-    case Config.Num(value) => Validated.Valid(value)
-    case _                 => Validated.Invalid(NonEmptyList.of(Failure.InvalidNum(Nil)))
+    case Config.Num(value) => value.validNel
+    case _                 => Failure.InvalidNum(Nil).invalidNel
 
   given Decoder[String] = _ match
     case Config.Str(value) => value.validNel
