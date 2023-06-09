@@ -60,7 +60,8 @@ object Decoder:
 
 extension (conf: Config)
   def get[A: Decoder](key: String): Result[A] =
-    conf.get(key).toValidNel(Failure.InvalidKey(key, List(key))).andThen(Decoder[A].decode(_).leftMap(_.map(_.withKey(key))))
+    conf.get(key).toValidNel(Failure.InvalidKey(key, List(key)))
+      .andThen(Decoder[A].decode(_).leftMap(_.map(_.withKey(key))))
 
 @main def main(): Unit =
   val config: Config =
@@ -85,7 +86,7 @@ extension (conf: Config)
         port    = 8000
       client:
         version = 3
-        browser = "Firefox"
+        browser = 4
       """
     )
 

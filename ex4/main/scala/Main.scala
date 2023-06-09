@@ -7,21 +7,21 @@ case class User(email: String, password: String)
 case class UserConfig(users: List[User])
 
 def decodeAsUserConfig(config: Config): Result[UserConfig] =
+  
   ???
 
 @main def main(): Unit =
   val config: Config =
     Config.block(
-      "count" -> Config.leaf(3),
-      "user1" -> Config.block(
+      "1" -> Config.block(
         "email" -> Config.leaf("alice@example.com"),
         "password" -> Config.leaf("password"),
       ),
-      "user2" -> Config.block(
+      "2" -> Config.block(
         "email" -> Config.leaf("bob@example.com"),
         "password" -> Config.leaf("supersecret"),
       ),
-      "user3" -> Config.block(
+      "3" -> Config.block(
         "email" -> Config.leaf("charlie@example.com"),
         "password" -> Config.leaf("opensesame"),
       ),
