@@ -4,6 +4,11 @@ import cats.syntax.all.*
 import cats.data.*
 import cats.Show
 import cats.derived.*
+import cats.MonadThrow
+import cats.effect.IO
+import cats.effect.unsafe.implicits.global
+import cats.MonadError
+import cats.Parallel
 
 case class SystemConfig(server: ServerConfig, client: ClientConfig) derives Show
 object SystemConfig:
@@ -33,7 +38,18 @@ object Failure:
     case Failure.InvalidStr(ps)      => s"Invalid string at path: ${ps.mkString(", ")}"
     case Failure.InvalidKey(key, ps) => s"Invalid key $key at path: ${ps.mkString(", ")}"
 
-type Result[A] = ValidatedNel[Failure, A]
+type Error = NonEmptyList[Failure]
+type Result[A] = EitherT[IO, Error, A]
+
+// This allows us to accumulate errors based on the Either, not the IO.
+given Parallel[Result] = EitherT.accumulatingParallel
+
+def mkError(f: Failure): Error = NonEmptyList.of(f)
+
+extension [A](res: Result[A])
+  def run: Either[NonEmptyList[Failure], A] = runResult(res)
+
+def runResult[A](res: Result[A]): Either[NonEmptyList[Failure], A] = res.value.unsafeRunSync()
 
 trait Decoder[A]:
   def decode(config: Config): Result[A]
@@ -42,26 +58,27 @@ object Decoder:
   def apply[A](using dec: Decoder[A]): Decoder[A] = dec
 
   def product2[A: Decoder, B: Decoder, C](keyA: String, keyB: String)(f: (a: A, b: B) => C): Decoder[C] = conf =>
-    (conf.get[A](keyA), conf.get[B](keyB)).mapN(f)
+    (conf.get[A](keyA), conf.get[B](keyB)).parMapN(f)
 
   def product3[A: Decoder, B: Decoder, C: Decoder, D](
     keyA: String,
     keyB: String,
     keyC: String
-  )(f: (a: A, b: B, c: C) => D): Decoder[D] = conf => (conf.get[A](keyA), conf.get[B](keyB), conf.get[C](keyC)).mapN(f)
+  )(f: (a: A, b: B, c: C) => D): Decoder[D] = conf => (conf.get[A](keyA), conf.get[B](keyB), conf.get[C](keyC)).parMapN(f)
 
   given Decoder[Int] = _ match
-    case Config.Num(value) => value.validNel
-    case _                 => Failure.InvalidNum(Nil).invalidNel
+    case Config.Num(value) => value.pure
+    case _                 => MonadError[Result, Error].raiseError(mkError(Failure.InvalidNum(Nil)))
 
   given Decoder[String] = _ match
-    case Config.Str(value) => value.validNel
-    case _                 => Failure.InvalidStr(Nil).invalidNel
+    case Config.Str(value) => value.pure
+    case _                 => MonadError[Result, Error].raiseError(mkError(Failure.InvalidStr(Nil)))
 
 extension (conf: Config)
   def get[A: Decoder](key: String): Result[A] =
-    conf.get(key).toValidNel(Failure.InvalidKey(key, List(key)))
-      .andThen(Decoder[A].decode(_).leftMap(_.map(_.withKey(key))))
+    conf.get(key) match
+      case None => MonadError[Result, Error].raiseError(mkError(Failure.InvalidKey(key, List(key))))
+      case Some(value) => Decoder[A].decode(value).leftMap(_.map(_.withKey(key)))
 
 @main def main(): Unit =
   val config: Config =
@@ -90,5 +107,5 @@ extension (conf: Config)
       """
     )
 
-  println(Decoder[SystemConfig].decode(config))
-  println(Decoder[SystemConfig].decode(config2).show)
+  println(Decoder[SystemConfig].decode(config).run)
+  println(Decoder[SystemConfig].decode(config2).run)
